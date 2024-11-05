@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do List</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        #todoList { padding: 10px; border: 1px solid #ddd; margin-top: 10px; }
+        #newTodo { width: 100%; padding: 10px; font-size: 16px; border: 1px solid #ccc; }
+        button { padding: 10px; background-color: #007bff; color: white; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h2>To-Do List</h2>
+    <input id="newTodo" type="text" placeholder="New To-Do">
+    <button id="addTodo">Add</button>
+    <div id="todoList"></div>
+
+    <script>
+        let todos = [];
+        const todoListDiv = document.getElementById('todoList');
+        const newTodoInput = document.getElementById('newTodo');
+        const addTodoButton = document.getElementById('addTodo');
+
+        addTodoButton.onclick = function() {
+            const newTodo = newTodoInput.value.trim();
+            if (newTodo) {
+                todos.push(newTodo);
+                newTodoInput.value = '';
+                renderTodoList();
+            }
+        };
+
+        function renderTodoList() {
+            todoListDiv.innerHTML = '';
+            todos.forEach((todo, index) => {
+                todoListDiv.innerHTML += `<div>${todo} <span style="color:blue; cursor:pointer;" onclick="deleteTodo(${index})">Delete</span></div>`;
+            });
+        }
+
+        function deleteTodo(index) {
+            todos.splice(index, 1);
+            renderTodoList();
+        }
+
+        // Example: Save to Telegram (this part requires server-side handling which is out of scope for this simple example)
+        // Telegram.WebApp.store({ key: 'todos', value: JSON.stringify(todos) });
+    </script>
+</body>
+</html>
