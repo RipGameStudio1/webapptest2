@@ -54,7 +54,7 @@ document.addEventListener('TelegramAuth', onTelegramAuth);
 // Initialize without waiting for the library to load
 if (window.Telegram) {
     const telegramAuth = new window.TelegramAuth(
-        'YOUR_BOT_USERNAME', // Replace with your bot's username
+        '@giagfisfffs_bot', // Replace with your bot's username
         { 
             // Other initialization options if needed
         }
