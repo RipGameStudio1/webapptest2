@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Telegram Dino Game</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f0f0f0;
+            font-family: 'Arial', sans-serif;
+        }
+
+        #gameContainer {
+            width: 600px;
+            height: 200px;
+            position: relative;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            overflow: hidden;
+        }
+
+        #dino {
+            width: 44px;
+            height: 47px;
+            position: absolute;
+            bottom: 0;
+            left: 50px;
+            background-image: url('https://raw.githubusercontent.com/wayou/t-rex-runner/gh-pages/assets/sprites.png');
+            background-position: 0 0;
+            background-repeat: no-repeat;
+        }
+
+        .obstacle {
+            width: 23px;
+            height: 46px;
+            position: absolute;
+            bottom: 0;
+            background-image: url('https://raw.githubusercontent.com/wayou/t-rex-runner/gh-pages/assets/sprites.png');
+            background-position: -228px 0;
+            background-repeat: no-repeat;
+        }
+
+        .cloud {
+            position: absolute;
+            background-image: url('https://raw.githubusercontent.com/wayou/t-rex-runner/gh-pages/assets/sprites.png');
+            background-position: -86px 0;
+            width: 46px;
+            height: 14px;
+        }
+
+        #ground {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 16px;
+            background-image: url('https://raw.githubusercontent.com/wayou/t-rex-runner/gh-pages/assets/sprites.png');
+            background-position: 0 -53px;
+            background-repeat: repeat-x;
+        }
+
+        #score-panel {
+            background-color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            margin: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            display: none;
+        }
+
+        .button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        #pause-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="score-panel">
+        <div id="username"></div>
+        <div id="high-score">High Score: 0</div>
+        <div id="clickCounter">Clicks: 0</div>
+    </div>
+    
+    <div id="gameContainer">
+        <div id="ground"></div>
+        <div id="dino"></div>
+        <button id="pause-btn" class="button">⏸️</button>
+        
+        <div id="game-over">
+            <h2>Game Over!</h2>
+            <p id="final-score"></p>
+            <button class="button" onclick="resetGame()">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        let tg = window.Telegram.WebApp;
+        let username = tg.initDataUnsafe?.user?.username || 'Guest';
+        let clicks = 0;
+        let highScore = 0;
+        let isJumping = false;
+        let gravity = 0.9;
+        let dinoBottom = 0;
+        let dinoVelocity = 0;
+        let gameLoop;
+        let obstacles = [];
+        let clouds = [];
+        let isGameOver = false;
+        let isPaused = false;
+        let animationFrame = 0;
+        let difficulty = 1;
+
+        // Sound effects
+        const jumpSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-quick-jump-arcade-game-239.mp3');
+        const gameOverSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-player-losing-or-failing-2042.mp3');
+
+        // Load saved progress
+        function loadProgress() {
+            let saved = localStorage.getItem(`dino_progress_${username}`);
+            if (saved) {
+                let data = JSON.parse(saved);
+                clicks = data.clicks || 0;
+                highScore = data.highScore || 0;
+                updateScores();
+            }
+        }
+
+        function saveProgress() {
+            let data = {
+                clicks: clicks,
+                highScore: highScore
+            };
+            localStorage.setItem(`dino_progress_${username}`, JSON.stringify(data));
+        }
+
+        function updateScores() {
+            document.getElementById('username').innerText = `Player: ${username}`;
+            document.getElementById('clickCounter').innerText = `Clicks: ${clicks}`;
+            document.getElementById('high-score').innerText = `High Score: ${highScore}`;
+        }
+
+        function animateDino() {
+            if (isJumping) {
+                dino.style.backgroundPosition = '-88px 0';
+            } else {
+                animationFrame = (animationFrame + 1) % 2;
+                dino.style.backgroundPosition = animationFrame === 0 ? '0 0' : '-44px 0';
+            }
+        }
+
+        function jump() {
+            if (!isJumping && !isGameOver && !isPaused) {
+                isJumping = true;
+                dinoVelocity = 15;
+                clicks++;
+                jumpSound.play();
+                updateScores();
+                saveProgress();
+            }
+        }
+
+        function createCloud() {
+            const cloud = document.createElement('div');
+            cloud.classList.add('cloud');
+            cloud.style.left = '600px';
+            cloud.style.top = Math.random() * 100 + 'px';
+            document.getElementById('gameContainer').appendChild(cloud);
+            clouds.push(cloud);
+        }
+
+        function moveCloud() {
+            clouds.forEach((cloud, index) => {
+                let cloudLeft = parseInt(cloud.style.left);
+                cloud.style.left = (cloudLeft - 2) + 'px';
+
+                if (cloudLeft < -46) {
+                    cloud.remove();
+                    clouds.splice(index, 1);
+                }
+            });
+        }
+
+        function createObstacle() {
+            const obstacle = document.createElement('div');
+            obstacle.classList.add('obstacle');
+            obstacle.style.left = '600px';
+            document.getElementById('gameContainer').appendChild(obstacle);
+            obstacles.push(obstacle);
+        }
+
+        function moveObstacles() {
+            obstacles.forEach((obstacle, index) => {
+                let obstacleLeft = parseInt(obstacle.style.left);
+                obstacle.style.left = (obstacleLeft - (5 * difficulty)) + 'px';
+
+                if (obstacleLeft < -23) {
+                    obstacle.remove();
+                    obstacles.splice(index, 1);
+                    highScore = Math.max(highScore, clicks);
+                    updateScores();
+}
+
+                // Collision detection
+                if (obstacleLeft > 30 && obstacleLeft < 90 && dinoBottom < 40) {
+                    gameOver();
+                }
+            });
+        }
+
+        function gameOver() {
+            isGameOver = true;
+            clearInterval(gameLoop);
+            gameOverSound.play();
+            document.getElementById('game-over').style.display = 'block';
+            document.getElementById('final-score').innerText = `Final Score: ${clicks}\nHigh Score: ${highScore}`;
+            saveProgress();
+        }
+
+        function resetGame() {
+            isGameOver = false;
+            isPaused = false;
+            clicks = 0;
+            difficulty = 1;
+            obstacles.forEach(obstacle => obstacle.remove());
+            clouds.forEach(cloud => cloud.remove());
+            obstacles = [];
+            clouds = [];
+            dinoBottom = 0;
+            dinoVelocity = 0;
+            dino.style.bottom = '0px';
+            document.getElementById('game-over').style.display = 'none';
+            updateScores();
+            startGame();
+        }
+
+        function togglePause() {
+            isPaused = !isPaused;
+            const pauseBtn = document.getElementById('pause-btn');
+            pauseBtn.innerText = isPaused ? '▶️' : '⏸️';
+            
+            if (isPaused) {
+                clearInterval(gameLoop);
+            } else {
+                startGame();
+            }
+        }
+
+        function applyGravity() {
+            if (!isPaused) {
+                dinoBottom += dinoVelocity;
+                dinoVelocity -= gravity;
+
+                if (dinoBottom <= 0) {
+                    dinoBottom = 0;
+                    isJumping = false;
+                    dinoVelocity = 0;
+                }
+
+                dino.style.bottom = dinoBottom + 'px';
+            }
+        }
+
+        function increaseDifficulty() {
+            difficulty += 0.1;
+        }
+
+        function startGame() {
+            if (!isGameOver && !isPaused) {
+                gameLoop = setInterval(() => {
+                    applyGravity();
+                    moveObstacles();
+                    moveCloud();
+                    animateDino();
+
+                    // Create obstacles based on difficulty
+                    if (Math.random() < 0.02 * difficulty) {
+                        createObstacle();
+                    }
+
+                    // Create clouds
+                    if (Math.random() < 0.01) {
+                        createCloud();
+                    }
+
+                    // Increase difficulty every 10 seconds
+                    if (clicks > 0 && clicks % 100 === 0) {
+                        increaseDifficulty();
+                    }
+                }, 20);
+            }
+        }
+
+        // Event listeners
+        document.addEventListener('keydown', (event) => {
+            if (event.code === 'Space') {
+                event.preventDefault();
+                jump();
+            } else if (event.code === 'Escape') {
+                togglePause();
+            }
+        });
+
+        document.addEventListener('touchstart', jump);
+        document.getElementById('gameContainer').addEventListener('click', jump);
+        document.getElementById('pause-btn').addEventListener('click', togglePause);
+
+        // Initialize game
+        loadProgress();
+        updateScores();
+        startGame();
+
+        // Telegram WebApp specific settings
+        tg.expand();
+        tg.enableClosingConfirmation();
+
+        // Save progress before closing
+        window.addEventListener('beforeunload', saveProgress);
+    </script>
+</body>
+</html>
