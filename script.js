@@ -10,28 +10,16 @@ function initUserData() {
         
         // Обновляем аватар
         const avatarElement = document.querySelector('.avatar');
+        avatarElement.style.backgroundImage = `url(${user.photo_url})`;
+        avatarElement.style.backgroundSize = 'cover';
+        avatarElement.style.backgroundPosition = 'center';
         
-        // Пытаемся получить аватар через profilePhotos
-        if (user.id) {
-            // Создаем временный элемент img для проверки загрузки аватара
-            const img = new Image();
-            img.onload = function() {
-                avatarElement.style.backgroundImage = `url(${this.src})`;
-                avatarElement.style.backgroundSize = 'cover';
-                avatarElement.style.backgroundPosition = 'center';
-            };
-            img.onerror = function() {
-                // Если аватар не загрузился, показываем первую букву имени
-                avatarElement.textContent = user.first_name.charAt(0).toUpperCase();
-                avatarElement.style.display = 'flex';
-                avatarElement.style.alignItems = 'center';
-                avatarElement.style.justifyContent = 'center';
-                avatarElement.style.fontSize = '24px';
-                avatarElement.style.color = '#ffffff';
-                avatarElement.style.backgroundColor = '#4A90E2';
-            };
-            img.src = `https://t.me/i/userpic/320/${user.id}.jpg`;
-        }
+        // Включаем отображение аватара в Telegram Web App
+        tg.expand();
+        tg.enableClosingConfirmation();
+        tg.MainButton.setParams({
+            is_visible: true
+        });
     }
 }
 
