@@ -8,12 +8,21 @@ function initUserData() {
         const usernameElement = document.querySelector('.username');
         usernameElement.textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
         
-        // Обновляем аватар если есть
-        if (user.photo_url) {
-            const avatarElement = document.querySelector('.avatar');
-            avatarElement.style.backgroundImage = `url(${user.photo_url})`;
+        // Обновляем аватар
+        const avatarElement = document.querySelector('.avatar');
+        if (tg.initDataUnsafe.user.photo_url) {
+            avatarElement.style.backgroundImage = `url(${tg.initDataUnsafe.user.photo_url})`;
             avatarElement.style.backgroundSize = 'cover';
             avatarElement.style.backgroundPosition = 'center';
+        } else {
+            // Если аватарка отсутствует, показываем первую букву имени
+            avatarElement.textContent = user.first_name.charAt(0).toUpperCase();
+            avatarElement.style.display = 'flex';
+            avatarElement.style.alignItems = 'center';
+            avatarElement.style.justifyContent = 'center';
+            avatarElement.style.fontSize = '24px';
+            avatarElement.style.color = '#ffffff';
+            avatarElement.style.backgroundColor = '#4A90E2';
         }
     }
 }
