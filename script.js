@@ -14,11 +14,11 @@ function initUserData() {
         avatarElement.style.backgroundSize = 'cover';
         avatarElement.style.backgroundPosition = 'center';
         
-        // Включаем отображение аватара в Telegram Web App
+        // Включаем отображение аватара в настройках WebApp
         tg.expand();
         tg.enableClosingConfirmation();
         tg.MainButton.setParams({
-            is_visible: true
+            text_color: '#FFFFFF'
         });
     }
 }
